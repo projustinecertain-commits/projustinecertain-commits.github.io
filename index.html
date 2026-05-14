@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+  <title>Test Firebase</title>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <style>body{font-family:sans-serif;padding:20px;background:#f5ead8;}</style>
+</head>
+<body>
+<h2>🔥 Test Firebase</h2>
+<div id="status">Connexion en cours...</div>
+<div id="data" style="margin-top:20px;font-size:13px;"></div>
+<script>
+const firebaseConfig={
+  apiKey:"AIzaSyAkwx0vdnHXt0V7S5au4nVLudwVEmC_8_M",
+  authDomain:"dive-n-smile.firebaseapp.com",
+  projectId:"dive-n-smile",
+  storageBucket:"dive-n-smile.firebasestorage.app",
+  messagingSenderId:"663554708006",
+  appId:"1:663554708006:web:9dfdcda13d1f4fecd5cce7"
+};
+try {
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  document.getElementById('status').innerHTML = '✅ Firebase initialisé';
+  
+  db.collection("planning").doc("data").get().then(snap => {
+    if(snap.exists) {
+      const data = snap.data();
+      const keys = Object.keys(data.planning || {});
+      document.getElementById('status').innerHTML = '✅ Données trouvées !';
+      document.getElementById('data').innerHTML = 'Dates dans la base : ' + keys.slice(0,5).join(', ') + (keys.length > 5 ? '...' : '');
+    } else {
+      document.getElementById('status').innerHTML = '⚠️ Document vide';
+    }
+  }).catch(err => {
+    document.getElementById('status').innerHTML = '❌ Erreur lecture : ' + err.message;
+  });
+} catch(e) {
+  document.getElementById('status').innerHTML = '❌ Erreur init : ' + e.message;
+}
+</script>
+</body>
+</html>
