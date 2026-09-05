@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Diagnostic DNS - Données perdues</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<style>
+body{font-family:Arial,sans-serif;padding:20px;background:#f5ead8;color:#1a2a3a;}
+h1{color:#0077aa;font-size:20px;}
+h2{color:#1a8a4a;font-size:16px;margin-top:20px;}
+.doc{background:#fff;border-radius:12px;padding:14px;margin-bottom:12px;border:1px solid #dde;}
+.day{background:#e8f4ec;border-radius:8px;padding:10px;margin:6px 0;}
+.empty{color:#9ab0bb;font-style:italic;}
+.found{color:#1a8a4a;font-weight:bold;}
+.error{color:#cc3333;}
+pre{font-size:11px;overflow-x:auto;white-space:pre-wrap;}
+button{background:#0077aa;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;cursor:pointer;margin:5px;}
+</style>
+</head>
+<body>
+<h1>🔍 Diagnostic — Données perdues DNS</h1>
+<p>Recherche des données du 8, 9, 10 septembre 2026...</p>
+<div id="result">Chargement...</div>
+
+<script>
+const firebaseConfig={apiKey:"AIzaSyAkwx0vdnHXt0V7S5au4nVLudwVEmC_8_M",authDomain:"dive-n-smile.firebaseapp.com",projectId:"dive-n-smile",storageBucket:"dive-n-smile.firebasestorage.app",messagingSenderId:"663554708006",appId:"1:663554708006:web:9dfdcda13d1f4fecd5cce7"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore();
+
+const DATES_PERDUES=["2026-09-08","2026-09-09","2026-09-10"];
+const DOCS_A_VERIFIER=["week-2026-09-01","week-2026-09-07","week-2026-08-31","week-2026-09-08","data"];
+
+async function diagnostic(){
+  const div=document.getElementById("result");
+  div.innerHTML="<p>🔍 Vérification en cours...</p>";
+  let html="";
+  let found=false;
+
+  for(const docId of DOCS_A_VERIFIER){
+    try{
+      const snap=await db.collection("planning").doc(docId).get();
+      if(!snap.exists){
+        html+=`<div class="doc"><b>planning/${docId}</b>: <span class="empty">Document inexistant</span></div>`;
+        continue;
+      }
+      const data=snap.data();
+      const days=data.days||data.planning||{};
+      const foundDays=DATES_PERDUES.filter(d=>days[d]&&Object.keys(days[d]).length>0);
+      
+      if(foundDays.length>0){
+        found=true;
+        html+=`<div class="doc" style="border:2px solid #1a8a4a">`;
+        html+=`<b class="found">✅ DONNÉES TROUVÉES dans planning/${docId}</b>`;
+        foundDays.forEach(d=>{
+          const dayData=days[d];
+          html+=`<div class="day"><b>${d}</b>:<br>`;
+          Object.keys(dayData).forEach(slot=>{
+            const s=dayData[slot];
+            const divers=s.divers||[];
+            if(divers.length>0){
+              html+=`<b>${slot}</b>: ${divers.map(dv=>dv.prenom+" "+dv.nom).join(", ")}<br>`;
+            }
+          });
+          html+=`</div>`;
+        });
+        html+=`</div>`;
+      } else {
+        const allDays=Object.keys(days);
+        html+=`<div class="doc"><b>planning/${docId}</b>: Existe (${allDays.length} jours) — pas de données pour 8-10 sept`;
+        if(allDays.length>0) html+=`<br><small>Jours présents: ${allDays.sort().join(", ")}</small>`;
+        html+=`</div>`;
+      }
+    }catch(e){
+      html+=`<div class="doc error"><b>planning/${docId}</b>: Erreur — ${e.message}</div>`;
+    }
+  }
+
+  // Chercher aussi dans TOUS les documents week-*
+  html+=`<h2>Recherche dans tous les documents week-*...</h2>`;
+  try{
+    const allDocs=await db.collection("planning").get();
+    for(const doc of allDocs.docs){
+      if(DOCS_A_VERIFIER.includes(doc.id))continue;
+      const days=doc.data().days||{};
+      const foundDays=DATES_PERDUES.filter(d=>days[d]&&Object.keys(days[d]).length>0);
+      if(foundDays.length>0){
+        found=true;
+        html+=`<div class="doc" style="border:2px solid #1a8a4a">`;
+        html+=`<b class="found">✅ DONNÉES TROUVÉES dans planning/${doc.id}</b>`;
+        foundDays.forEach(d=>{
+          const dayData=days[d];
+          html+=`<div class="day"><b>${d}</b>:<br>`;
+          Object.keys(dayData).forEach(slot=>{
+            const s=dayData[slot];
+            const divers=s.divers||[];
+            if(divers.length>0){
+              html+=`<b>${slot}</b>: ${divers.map(dv=>dv.prenom+" "+dv.nom).join(", ")}<br>`;
+            }
+          });
+          html+=`</div>`;
+        });
+        html+=`</div>`;
+      }
+    }
+  }catch(e){
+    html+=`<div class="error">Erreur lecture collection: ${e.message}</div>`;
+  }
+
+  if(!found){
+    html+=`<div class="doc error" style="border:2px solid #cc3333;margin-top:16px">
+      <b>❌ Données introuvables dans Firebase</b><br>
+      Les plongeurs du 8, 9, 10 septembre n'ont jamais été enregistrés en base de données (problème 1MB).
+    </div>`;
+  }
+
+  div.innerHTML=html;
+}
+
+diagnostic();
+</script>
+</body>
+</html>
